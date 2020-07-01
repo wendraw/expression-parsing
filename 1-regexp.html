@@ -1,0 +1,51 @@
+<script>
+    let tokens = tokenize("1024.1024 * 10 + 25")
+    console.log(tokens);
+
+    function tokenize(source) {
+        let tokens = [];
+
+        for (let token of lex(source)) {
+            if (token.type !== "Whitespace" && token.type !== "LineTerminator") {
+                tokens.push(token);
+            }
+        }
+        return tokens;
+
+        function* lex(source) {
+            let regexp = /((?:^0|[1-9][0-9]*)\.[0-9]*|(?:^0|[1-9][0-9]*))|([ ]+)|([\r\n]+)|(\+)|(\-)|(\*)|(\/)/g;
+            const dict = ["Number", "Whitespace", "LineTerminator", "+", "-", "*", "/"];
+
+            let result = null;
+            let lastIndex = 0;
+            while (true) {
+                lastIndex = regexp.lastIndex;
+                result = regexp.exec(source);
+
+                if (!result) break;
+
+                // 这次匹配的长度有问题
+                if (regexp.lastIndex - lastIndex > result[0].length) {
+                    console.log(lastIndex, regexp.lastIndex, result[0].length, result);
+                    throw new Error("Unexpected token \"" +
+                        source.slice(lastIndex, regexp.lastIndex - result[0].length) +
+                        "\"!")
+                }
+
+                let token = {
+                    type: null,
+                    value: null,
+                }
+                for (let i = 0; i < dict.length; i++) {
+                    if (result[i + 1]) {
+                        token.type = dict[i];
+                    }
+                }
+                token.value = result[0];
+                yield token;
+            }
+            yield { type: "EOF" }
+        }
+    }
+
+</script>

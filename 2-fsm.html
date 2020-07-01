@@ -1,0 +1,285 @@
+<script>
+    let tokens = tokenize("1024.1024 * 10 + 25")
+    let ast = buildAst(tokens);
+    console.log(ast);
+
+    function tokenize(source) {
+        let tokens = [];
+        lex(source);
+        return tokens;
+
+        function lex(source) {
+            const EOF = Symbol("EOF"); // End Of File
+            let currentToken = null;
+
+            let state = start;
+            for (let char of source) {
+                state = state(char);
+            }
+            state = state(EOF);
+
+
+            function emit(token) {
+                tokens.push(token);
+            }
+
+            function start(c) {
+                if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else {
+                    return start;
+                }
+            }
+
+            function end(c) {
+                return end;
+            }
+
+            function number(c) {
+                if (c === EOF) {
+                    emit(currentToken);
+                    emit({
+                        type: "EOF",
+                    });
+                    return end;
+                } else if (c.match(/[ \r\n]/)) {
+                    emit(currentToken);
+                    return whitespace;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken.value += c;
+                    return number;
+                } else if (c === "+") {
+                    emit(currentToken);
+                    return plus;
+                } else if (c === "-") {
+                    emit(currentToken);
+                    return minus;
+                } else if (c === "*") {
+                    emit(currentToken);
+                    return multiply;
+                } else if (c === "/") {
+                    emit(currentToken);
+                    return divide;
+                } else {
+                    throw new Error("number error");
+                }
+            }
+
+            function whitespace(c) {
+                if (c === EOF) {
+                    emit(currentToken);
+                    emit({
+                        type: "EOF",
+                    });
+                    return end;
+                } else if (c.match(/[ \r\n]/)) {
+                    return whitespace;
+                } else if (c === "+") {
+                    currentToken = {
+                        type: "+",
+                        value: "+",
+                    }
+                    return plus;
+                } else if (c === "-") {
+                    currentToken = {
+                        type: "-",
+                        value: "-",
+                    }
+                    return minus;
+                } else if (c === "*") {
+                    currentToken = {
+                        type: "*",
+                        value: "*",
+                    }
+                    return multiply;
+                } else if (c === "/") {
+                    currentToken = {
+                        type: "/",
+                        value: "/",
+                    }
+                    return divide;
+                } else {
+                    throw new Error("whitespace error");
+                }
+            }
+
+            function plus(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return plus;
+                } else if (c.match(/[0-9\.]/)) {
+                    emit(currentToken);
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else {
+                    throw new Error("plus error");
+                }
+            }
+
+            function minus(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return plus;
+                } else if (c.match(/[0-9\.]/)) {
+                    emit(currentToken);
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else {
+                    throw new Error("minus error");
+                }
+            }
+
+            function multiply(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return plus;
+                } else if (c.match(/[0-9\.]/)) {
+                    emit(currentToken);
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else {
+                    throw new Error("multiply error");
+                }
+            }
+
+            function divide(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return plus;
+                } else if (c.match(/[0-9\.]/)) {
+                    emit(currentToken);
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else {
+                    throw new Error("divide error");
+                }
+            }
+        }
+    }
+
+    function buildAst(tokens) {
+        return additiveExpression(tokens);
+
+        function expression(tokens) {
+            if (tokens[0].type === "AdditiveExpression" && tokens[1].type === "EOF") {
+                let node = {
+                    type: "Expression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                tokens.unshift(node);
+                return node;
+            }
+            additiveExpression(tokens);
+            return expression(tokens);
+        }
+
+        function additiveExpression(tokens) {
+            if (tokens[0].type === "Number") {
+                multiplicativeExpression(tokens);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "+") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                multiplicativeExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "-") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                MultiplicativeExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid additive expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function multiplicativeExpression(tokens) {
+            if (tokens[0].type === "Number") {
+                let node = {
+                    type: "MultiplicativeExpression",
+                    children: tokens.shift()
+                }
+                tokens.unshift(node);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression" &&
+                tokens.length >= 1 &&
+                tokens[1].type === "*") {
+                if (tokens.length >= 2 && tokens[2].type === "Number") {
+                    let node = {
+                        type: "MultiplicativeExpression",
+                        children: [tokens.shift(), tokens.shift(), tokens.shift()]
+                    }
+                    tokens.unshift(node);
+                    return multiplicativeExpression(tokens);
+                } else {
+                    throw new Error("Unexpected token type");
+                }
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "/") {
+                if (tokens.length >= 2 && tokens[2].type === "Number") {
+                    let node = {
+                        type: "MultiplicativeExpression",
+                        children: [tokens.shift(), tokens.shift(), tokens.shift()]
+                    }
+                    tokens.unshift(node);
+                    return multiplicativeExpression(tokens);
+                } else {
+                    throw new Error("Unexpected token type");
+                }
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid multiplication expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+    }
+
+</script>

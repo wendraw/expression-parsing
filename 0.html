@@ -1,0 +1,31 @@
+<script>
+    let regexp = /((?:^0|[1-9][0-9]*)\.[0-9]*|(?:^0|[1-9][0-9]*))|([ ]+)|([\r\n]+)|(\+)|(\-)|(\*)|(\/)/g;
+    const dict = ["Number", "Whitespace", "LineTerminator", "+", "-", "*", "/"];
+
+    function tokenize(source) {
+        let result = null;
+        let lastIndex = 0;
+        while (true) {
+            lastIndex = regexp.lastIndex;
+            result = regexp.exec(source);
+
+            if (!result) break;
+            // 这次匹配的长度有问题
+            if (regexp.lastIndex - lastIndex > result[0].length) {
+                console.log(lastIndex, regexp.lastIndex, result[0].length, result);
+                throw new Error("Unexpected token \"" +
+                    source.slice(lastIndex, regexp.lastIndex - result[0].length) +
+                    "\"!")
+            }
+
+            for (let i = 0; i < dict.length; i++) {
+                if (result[i + 1]) {
+                    console.log(dict[i])
+                }
+            }
+            console.log(result[0]);
+        }
+    }
+
+    tokenize("1024.1024 * 10 + 25");
+</script>
