@@ -1,5 +1,5 @@
 <script>
-    let tokens = tokenize("1024.1024 * 10 + 25");
+    let tokens = tokenize("    1024.1024 * 10 + 25");
     console.log(tokens);
 
     function tokenize(source) {
@@ -23,7 +23,9 @@
             }
 
             function start(c) {
-                if (c.match(/[0-9\.]/)) {
+                if (c.match(/[ \r\n]/)) {
+                    return start;
+                } else if (c.match(/[0-9\.]/)) {
                     currentToken = {
                         type: 'Number',
                         value: "",
@@ -82,24 +84,28 @@
                         type: "+",
                         value: "+",
                     }
+                    emit(currentToken);
                     return plus;
                 } else if (c === "-") {
                     currentToken = {
                         type: "-",
                         value: "-",
                     }
+                    emit(currentToken);
                     return minus;
                 } else if (c === "*") {
                     currentToken = {
                         type: "*",
                         value: "*",
                     }
+                    emit(currentToken);
                     return multiply;
                 } else if (c === "/") {
                     currentToken = {
                         type: "/",
                         value: "/",
                     }
+                    emit(currentToken);
                     return divide;
                 } else {
                     throw new Error("whitespace error");
@@ -110,7 +116,6 @@
                 if (c.match(/[ \r\n]/)) {
                     return plus;
                 } else if (c.match(/[0-9\.]/)) {
-                    emit(currentToken);
                     currentToken = {
                         type: 'Number',
                         value: "",
@@ -123,9 +128,8 @@
 
             function minus(c) {
                 if (c.match(/[ \r\n]/)) {
-                    return plus;
+                    return minus;
                 } else if (c.match(/[0-9\.]/)) {
-                    emit(currentToken);
                     currentToken = {
                         type: 'Number',
                         value: "",
@@ -138,9 +142,8 @@
 
             function multiply(c) {
                 if (c.match(/[ \r\n]/)) {
-                    return plus;
+                    return multiply;
                 } else if (c.match(/[0-9\.]/)) {
-                    emit(currentToken);
                     currentToken = {
                         type: 'Number',
                         value: "",
@@ -153,9 +156,8 @@
 
             function divide(c) {
                 if (c.match(/[ \r\n]/)) {
-                    return plus;
+                    return divide;
                 } else if (c.match(/[0-9\.]/)) {
-                    emit(currentToken);
                     currentToken = {
                         type: 'Number',
                         value: "",
