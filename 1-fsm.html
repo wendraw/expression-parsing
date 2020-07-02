@@ -92,7 +92,6 @@
 
             function whitespace(c) {
                 if (c === EOF) {
-                    emit(currentToken);
                     emit({
                         type: "EOF",
                     });
