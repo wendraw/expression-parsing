@@ -56,14 +56,34 @@
                     return number;
                 } else if (c === "+") {
                     emit(currentToken);
+                    currentToken = {
+                        type: "+",
+                        value: "+",
+                    }
+                    emit(currentToken);
                     return plus;
                 } else if (c === "-") {
+                    emit(currentToken);
+                    currentToken = {
+                        type: "-",
+                        value: "-",
+                    }
                     emit(currentToken);
                     return minus;
                 } else if (c === "*") {
                     emit(currentToken);
+                    currentToken = {
+                        type: "*",
+                        value: "*",
+                    }
+                    emit(currentToken);
                     return multiply;
                 } else if (c === "/") {
+                    emit(currentToken);
+                    currentToken = {
+                        type: "/",
+                        value: "/",
+                    }
                     emit(currentToken);
                     return divide;
                 } else {
