@@ -1,0 +1,666 @@
+<script>
+    let tokens = tokenize("(1024*10) +  123 && 0 || 1");
+    console.log(tokens);
+    let ast = buildAst(tokens);
+    console.log(JSON.stringify(ast, null, 2));
+
+    function tokenize(source) {
+        let tokens = [];
+        lex(source);
+        return tokens;
+
+        function lex(source) {
+            const EOF = Symbol("EOF"); // End Of File
+            let currentToken = null;
+
+            let state = start;
+            for (let char of source) {
+                state = state(char);
+            }
+            state = state(EOF);
+
+
+            function emit(token) {
+                tokens.push(token);
+            }
+
+            function start(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return start;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else if (c === "(") {
+                    currentToken = {
+                        type: '(',
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else {
+                    return start;
+                }
+            }
+
+            function end(c) {
+                return end;
+            }
+
+            function number(c) {
+                if (c === EOF) {
+                    emit(currentToken);
+                    emit({
+                        type: "EOF",
+                    });
+                    return end;
+                } else if (c.match(/[ \r\n]/)) {
+                    emit(currentToken);
+                    return whitespace;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken.value += c;
+                    return number;
+                } else if (c === "+") {
+                    emit(currentToken);
+                    currentToken = {
+                        type: "+",
+                        value: "+",
+                    }
+                    emit(currentToken);
+                    return plus;
+                } else if (c === "-") {
+                    emit(currentToken);
+                    currentToken = {
+                        type: "-",
+                        value: "-",
+                    }
+                    emit(currentToken);
+                    return minus;
+                } else if (c === "*") {
+                    emit(currentToken);
+                    currentToken = {
+                        type: "*",
+                        value: "*",
+                    }
+                    emit(currentToken);
+                    return multiply;
+                } else if (c === "/") {
+                    emit(currentToken);
+                    currentToken = {
+                        type: "/",
+                        value: "/",
+                    }
+                    emit(currentToken);
+                    return divide;
+                } else if (c === "|") {
+                    emit(currentToken);
+                    return logicOr;
+                } else if (c === "&") {
+                    emit(currentToken);
+                    return logicAnd;
+                } else if (c === ")") {
+                    emit(currentToken);
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("number state error");
+                }
+            }
+
+            function whitespace(c) {
+                if (c === EOF) {
+                    emit({
+                        type: "EOF",
+                    });
+                    return end;
+                } else if (c.match(/[ \r\n]/)) {
+                    return whitespace;
+                } else if (c === "+") {
+                    currentToken = {
+                        type: "+",
+                        value: "+",
+                    }
+                    emit(currentToken);
+                    return plus;
+                } else if (c === "-") {
+                    currentToken = {
+                        type: "-",
+                        value: "-",
+                    }
+                    emit(currentToken);
+                    return minus;
+                } else if (c === "*") {
+                    currentToken = {
+                        type: "*",
+                        value: "*",
+                    }
+                    emit(currentToken);
+                    return multiply;
+                } else if (c === "/") {
+                    currentToken = {
+                        type: "/",
+                        value: "/",
+                    }
+                    emit(currentToken);
+                    return divide;
+                } else if (c === "|") {
+                    return logicOr;
+                } else if (c === "&") {
+                    return logicAnd;
+                } else if (c === "(") {
+                    currentToken = {
+                        type: "(",
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else if (c === ")") {
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("whitespace state error");
+                }
+            }
+
+            function plus(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return plus;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else if (c === "(") {
+                    currentToken = {
+                        type: "(",
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else if (c === ")") {
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("plus state error");
+                }
+            }
+
+            function minus(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return minus;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else if (c === "(") {
+                    currentToken = {
+                        type: "(",
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else if (c === ")") {
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("minus state error");
+                }
+            }
+
+            function multiply(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return multiply;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else if (c === "(") {
+                    currentToken = {
+                        type: "(",
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else if (c === ")") {
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("multiply state error");
+                }
+            }
+
+            function divide(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return divide;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else if (c === "(") {
+                    currentToken = {
+                        type: "(",
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else if (c === ")") {
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("divide state error");
+                }
+            }
+
+            function logicOr(c) {
+                if (c === "|") {
+                    currentToken = {
+                        type: "||",
+                        value: "||",
+                    }
+                    emit(currentToken);
+                    return logicOrAfter;
+                } else {
+                    throw new Error("logicOr state error");
+                }
+            }
+
+            function logicOrAfter(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return logicOrAfter;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else if (c === "(") {
+                    currentToken = {
+                        type: "(",
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else if (c === ")") {
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("logicOrAfter state error");
+                }
+            }
+
+            function logicAnd(c) {
+                if (c === "&") {
+                    currentToken = {
+                        type: "&&",
+                        value: "&&",
+                    }
+                    emit(currentToken);
+                    return logicAndAfter;
+                } else {
+                    throw new Error("logicAnd state error");
+                }
+            }
+
+            function logicAndAfter(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return logicAndAfter;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else if (c === "(") {
+                    currentToken = {
+                        type: "(",
+                        value: "(",
+                    }
+                    emit(currentToken);
+                    return parenthesisLeft;
+                } else if (c === ")") {
+                    currentToken = {
+                        type: ")",
+                        value: ")",
+                    }
+                    emit(currentToken);
+                    return parenthesisRight;
+                } else {
+                    throw new Error("logicAndAfter state error");
+                }
+            }
+
+            function parenthesisLeft(c) {
+                if (c.match(/[ \r\n]/)) {
+                    return parenthesisLeft;
+                } else if (c.match(/[0-9\.]/)) {
+                    currentToken = {
+                        type: 'Number',
+                        value: "",
+                    }
+                    return number(c);
+                } else {
+                    throw new Error("parenthesisLeft state error");
+                }
+            }
+
+            function parenthesisRight(c) {
+                if (c === EOF) {
+                    emit(currentToken);
+                    emit({
+                        type: "EOF",
+                    });
+                    return end;
+                } else if (c.match(/[ \r\n]/)) {
+                    return parenthesisRight;
+                } else if (c === "+") {
+                    currentToken = {
+                        type: "+",
+                        value: "+",
+                    }
+                    emit(currentToken);
+                    return plus;
+                } else if (c === "-") {
+                    currentToken = {
+                        type: "-",
+                        value: "-",
+                    }
+                    emit(currentToken);
+                    return minus;
+                } else if (c === "*") {
+                    currentToken = {
+                        type: "*",
+                        value: "*",
+                    }
+                    emit(currentToken);
+                    return multiply;
+                } else if (c === "/") {
+                    currentToken = {
+                        type: "/",
+                        value: "/",
+                    }
+                    emit(currentToken);
+                    return divide;
+                } else if (c === "|") {
+                    return logicOr;
+                } else if (c === "&") {
+                    return logicAnd;
+                } else {
+                    throw new Error("parenthesisLeft state error");
+                }
+            }
+        }
+    }
+
+    function buildAst(tokens) {
+        return expression(tokens);
+
+        function expression(tokens) {
+            if (tokens[0].type === "LogicalOrExpression" && tokens[1].type === "EOF") {
+                let node = {
+                    type: "Expression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                tokens.unshift(node);
+                return node;
+            }
+            logicalOrExpression(tokens);
+            return expression(tokens);
+        }
+
+        function logicalOrExpression(tokens) {
+            if (tokens[0].type === "(") {
+                logicalAndExpression(tokens);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                logicalAndExpression(tokens);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalAndExpression") {
+                let node = {
+                    type: "LogicalOrExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalOrExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "||") {
+                let node = {
+                    type: "LogicalOrExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                logicalAndExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalOrExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid logical or expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function logicalAndExpression(tokens) {
+            if (tokens[0].type === "(") {
+                additiveExpression(tokens);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                additiveExpression(tokens);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression") {
+                let node = {
+                    type: "LogicalAndExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalAndExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "&&") {
+                let node = {
+                    type: "LogicalAndExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                additiveExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalAndExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid logical and expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function additiveExpression(tokens) {
+            if (tokens[0].type === "(") {
+                multiplicativeExpression(tokens);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                multiplicativeExpression(tokens);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "+") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                multiplicativeExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "-") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                multiplicativeExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid additive expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function multiplicativeExpression(tokens) {
+            if (tokens[0].type === "(") {
+                primaryExpression(tokens);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                primaryExpression(tokens);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "PrimaryExpression") {
+                let node = {
+                    type: "MultiplicativeExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression" &&
+                tokens.length >= 1 &&
+                tokens[1].type === "*") {
+                let node = {
+                    type: "MultiplicativeExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                primaryExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "/") {
+                let node = {
+                    type: "MultiplicativeExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                primaryExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid multiplication expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function primaryExpression(tokens) {
+            if (tokens[0].type === "Number") {
+                let node = {
+                    type: "PrimaryExpression",
+                    children: tokens.shift(),
+                }
+                tokens.unshift(node);
+                return primaryExpression(tokens);
+            }
+
+            if (tokens[0].type === "(") {
+                let node = {
+                    type: "PrimaryExpression",
+                    children: [tokens.shift()],
+                }
+                logicalOrExpression(tokens);
+                if (tokens.length > 1 &&
+                    tokens[0].type === "LogicalOrExpression" &&
+                    tokens[1].type === ")") {
+                    node.children.push(tokens.shift(), tokens.shift());
+                    tokens.unshift(node);
+                }
+                return primaryExpression(tokens);
+            }
+
+            if (tokens[0].type === "PrimaryExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid primary expression! Start with ${tokens[0].type}`)
+            }
+        }
+    }
+
+</script>

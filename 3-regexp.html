@@ -1,0 +1,288 @@
+<script>
+    let tokens = tokenize("(1024*10) +  123 && 0 || 1");
+    console.log(tokens);
+    let ast = buildAst(tokens);
+    console.log(JSON.stringify(ast, null, 2));
+
+    function tokenize(source) {
+        let tokens = [];
+
+        for (let token of lex(source)) {
+            if (token.type !== "Whitespace" && token.type !== "LineTerminator") {
+                tokens.push(token);
+            }
+        }
+        return tokens;
+
+        function* lex(source) {
+            let regexp = /((?:0|[1-9][0-9]*)\.[0-9]*|(?:0|[1-9][0-9]*))|([ ]+)|([\r\n]+)|(\+)|(\-)|(\*)|(\/)|(\|\|)|(&&)|(\()|(\))/g;
+            const dict = ["Number", "Whitespace", "LineTerminator", "+", "-", "*", "/", "||", "&&", "(", ")"];
+
+            let result = null;
+            let lastIndex = 0;
+            while (true) {
+                lastIndex = regexp.lastIndex;
+                result = regexp.exec(source);
+
+                if (!result) break;
+
+                // 这次匹配的长度有问题
+                if (regexp.lastIndex - lastIndex > result[0].length) {
+                    console.log(lastIndex, regexp.lastIndex, result[0].length, result);
+                    throw new Error("Unexpected token \"" +
+                        source.slice(lastIndex, regexp.lastIndex - result[0].length) +
+                        "\"!")
+                }
+
+                let token = {
+                    type: null,
+                    value: null,
+                }
+                for (let i = 0; i < dict.length; i++) {
+                    if (result[i + 1]) {
+                        token.type = dict[i];
+                    }
+                }
+                token.value = result[0];
+                yield token;
+            }
+            yield { type: "EOF" }
+        }
+    }
+
+    function buildAst(tokens) {
+        return expression(tokens);
+
+        function expression(tokens) {
+            if (tokens[0].type === "LogicalOrExpression" && tokens[1].type === "EOF") {
+                let node = {
+                    type: "Expression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                tokens.unshift(node);
+                return node;
+            }
+            logicalOrExpression(tokens);
+            return expression(tokens);
+        }
+
+        function logicalOrExpression(tokens) {
+            if (tokens[0].type === "(") {
+                logicalAndExpression(tokens);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                logicalAndExpression(tokens);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalAndExpression") {
+                let node = {
+                    type: "LogicalOrExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalOrExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "||") {
+                let node = {
+                    type: "LogicalOrExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                logicalAndExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return logicalOrExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalOrExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid logical or expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function logicalAndExpression(tokens) {
+            if (tokens[0].type === "(") {
+                additiveExpression(tokens);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                additiveExpression(tokens);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression") {
+                let node = {
+                    type: "LogicalAndExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalAndExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "&&") {
+                let node = {
+                    type: "LogicalAndExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                additiveExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return logicalAndExpression(tokens);
+            }
+
+            if (tokens[0].type === "LogicalAndExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid logical and expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function additiveExpression(tokens) {
+            if (tokens[0].type === "(") {
+                multiplicativeExpression(tokens);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                multiplicativeExpression(tokens);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "+") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                multiplicativeExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "-") {
+                let node = {
+                    type: "AdditiveExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                multiplicativeExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return additiveExpression(tokens);
+            }
+
+            if (tokens[0].type === "AdditiveExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid additive expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function multiplicativeExpression(tokens) {
+            if (tokens[0].type === "(") {
+                primaryExpression(tokens);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "Number") {
+                primaryExpression(tokens);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "PrimaryExpression") {
+                let node = {
+                    type: "MultiplicativeExpression",
+                    children: [tokens.shift()]
+                }
+                tokens.unshift(node);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression" &&
+                tokens.length >= 1 &&
+                tokens[1].type === "*") {
+                let node = {
+                    type: "MultiplicativeExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                primaryExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression" &&
+                tokens.length > 1 &&
+                tokens[1].type === "/") {
+                let node = {
+                    type: "MultiplicativeExpression",
+                    children: [tokens.shift(), tokens.shift()]
+                }
+                primaryExpression(tokens);
+                node.children.push(tokens.shift());
+                tokens.unshift(node);
+                return multiplicativeExpression(tokens);
+            }
+
+            if (tokens[0].type === "MultiplicativeExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid multiplication expression! Start with ${tokens[0].type}`)
+            }
+        }
+
+        function primaryExpression(tokens) {
+            if (tokens[0].type === "Number") {
+                let node = {
+                    type: "PrimaryExpression",
+                    children: tokens.shift(),
+                }
+                tokens.unshift(node);
+                return primaryExpression(tokens);
+            }
+
+            if (tokens[0].type === "(") {
+                let node = {
+                    type: "PrimaryExpression",
+                    children: [tokens.shift()],
+                }
+                logicalOrExpression(tokens);
+                if (tokens.length > 1 &&
+                    tokens[0].type === "LogicalOrExpression" &&
+                    tokens[1].type === ")") {
+                    node.children.push(tokens.shift(), tokens.shift());
+                    tokens.unshift(node);
+                }
+                return primaryExpression(tokens);
+            }
+
+            if (tokens[0].type === "PrimaryExpression") {
+                return tokens[0];
+            } else {
+                throw new Error(`Invalid primary expression! Start with ${tokens[0].type}`)
+            }
+        }
+    }
+
+</script>
